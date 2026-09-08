@@ -57,21 +57,16 @@ per-region numbers exactly (Chicago, QC, Michigan, Tampa, Boston all match to 1e
 | Pre-first-visit ordering success | higher better | `SUM(Advised Part Ordered Before First Visit) / COUNT(cases with # FRUs Advised > 0)` | 52.3% |
 | Parts consumed per Case | lower better | `SUM(# Parts Consumed) / COUNT(cases)` | 1.37 |
 | Onsite hours per Case *(secondary)* | lower better | `SUM(Onsite Hours) / COUNT(cases)` | 3.18 |
-| Parts return rate *(secondary)* | higher better | `SUM(Returned Parts Qty) / SUM(# Parts Ordered − # Parts Consumed)`, cases where that difference > 0 | 73.0% |
 
-These 8 benchmark values are used identically everywhere in the dashboard: the latest-update
+These 7 benchmark values are used identically everywhere in the dashboard: the latest-update
 cards, the KPI trend overlay line, the region comparison chart, and the region scorecard.
 
-> **Note on Parts return rate:** the workbook's own snapshot column is internally inconsistent
-> (some regions show values above 100%, e.g. 1.35 and 1.50). The dashboard always recomputes the
-> current value from the documented definition instead of trusting that column.
-
 **Missing source columns:** if the uploaded workbook doesn't contain `Advised Part Numbers
-Listed/Matched` (needed for Parts Advised Success rate) or `Returned Parts Qty (parsed)` (needed
-for Parts Return rate) — e.g. a raw single-sheet export with only free-text parts-list columns —
-the corresponding KPI's *current value* is reported as unavailable ("—") rather than approximated
-from ambiguous free-text list columns. This is noted in the import status message. The fixed
-benchmark for that KPI still displays, for reference, even while the current value is unavailable.
+Listed/Matched` (needed for Parts Advised Success rate) — e.g. a raw single-sheet export with
+only free-text parts-list columns — the corresponding KPI's *current value* is reported as
+unavailable ("—") rather than approximated from ambiguous free-text list columns. This is noted
+in the import status message. The fixed benchmark for that KPI still displays, for reference, even
+while the current value is unavailable.
 
 ## Features
 
