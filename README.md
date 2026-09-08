@@ -1,5 +1,14 @@
 # NAM Market Improvement Tracking — RDF KPI Dashboard (Philips)
 
+## ▶ Open the dashboard
+
+### **https://prasantkrsingh142.github.io/nam-market-improvement-tracking/**
+
+Click the link above, then drag your `.xlsx` file onto the import box. Nothing to install.
+Your Excel file is read entirely inside your own browser — it is never uploaded anywhere.
+
+---
+
 A self-contained, offline dashboard. Open `index.html` in a browser (or run `Open Dashboard.bat`),
 drop in the Excel workbook, and it produces the latest KPI status, period-over-period improvement
 and trend charts, benchmarked against the fixed **NAM Top-3 region targets**.
