@@ -96,11 +96,12 @@ const KPIS = [
     den: () => 1, num: r => r.onsite },
 
   { key: 'partsReturn', label: 'Parts return rate', short: 'Parts return', fmt: 'pct', dir: 'up',
-    bench: 0.73, secondary: true,
-    def: 'Returned quantity / (ordered quantity − consumed quantity); only cases with a positive unreturned balance count.',
-    calc: 'SUM(Returned Parts Qty) / SUM(# Parts Ordered − # Parts Consumed), for cases where that difference > 0',
-    src: 'BO / (AF − AH)', reqCols: ['partsReturned', 'partsOrdered', 'partsConsumed'],
-    den: r => (S.kpiAvailable.partsReturn && (r.partsOrdered - r.partsConsumed) > 0) ? (r.partsOrdered - r.partsConsumed) : null,
+    bench: 0.73, secondary: true, nullLabel: 'Not comparable',
+    def: 'NAM-only: parsed returned quantity / (parts ordered − parts consumed); only cases with a positive unused balance count.',
+    calc: 'SUM(Returned Qty parsed from Parts Returned List) / SUM(# Parts Ordered − # Parts Consumed), Market = NAM, cases where that difference > 0',
+    src: 'AP (parsed) / (AF − AH)', reqCols: ['partsReturned', 'partsOrdered', 'partsConsumed'],
+    den: r => (S.kpiAvailable.partsReturn && norm(r.market) === 'nam' && (r.partsOrdered - r.partsConsumed) > 0)
+      ? (r.partsOrdered - r.partsConsumed) : null,
     num: r => r.partsReturned }
 ];
 const KPI_BY_KEY = Object.fromEntries(KPIS.map(k => [k.key, k]));
@@ -111,9 +112,10 @@ const CANON_HEADERS = {
   partsConsumed: '# Parts Consumed', onsite: 'Onsite Hours', spa: 'Service Plan Available',
   orderedBefore: 'Advised Part Ordered Before First Visit', partsReturned: 'Returned Parts Qty (parsed)',
   advListed: 'Advised Part Numbers Listed', advMatched: 'Advised Part Numbers Matched',
-  advisedList: 'Parts Advised List', consumedList: 'Parts Consumed List'
+  advisedList: 'Parts Advised List', consumedList: 'Parts Consumed List',
+  partsReturnedList: 'Parts Returned List'
 };
-const fmtOf = k => k.fmt === 'pct' ? fmtPct : fmtNum;
+const fmtOf = k => v => v == null ? (k.nullLabel || '—') : (k.fmt === 'pct' ? fmtPct(v) : fmtNum(v));
 const fmtDelta = k => k.fmt === 'pct' ? fmtPP : fmtDN;
 
 /* Extract {num, qty} entries with a valid 12-digit part number from a free-text parts-list cell.
@@ -143,6 +145,21 @@ function matchAdvisedParts(advisedEntries, consumedEntries) {
     if (exact.has(e.num) || fam.has(famKey(e.num))) matched += e.qty;
   }
   return { total, matched };
+}
+
+/* Sum the quantity between "* " and "=" on every line of a free-text Parts Returned List cell
+   (e.g. "Part A * 2 = 100€"); blank/"-" is 0, malformed lines contribute 0. */
+function parseReturnedQtyList(v) {
+  if (v == null || v === '' || String(v).trim() === '-') return 0;
+  const lines = String(v).split(/\n+/);
+  let sum = 0;
+  for (const line of lines) {
+    const m = line.match(/\*\s*([\d.,]+)\s*=/);
+    if (!m) continue;
+    const qty = toNum(m[1]);
+    if (qty != null) sum += qty;
+  }
+  return sum;
 }
 
 /* --------------------------------------------------------------- app state */
@@ -251,6 +268,7 @@ function buildFromWorkbook(wb) {
   let autoDetected = false;
   if (!casesName) { casesName = detectCaseSheet(wb, planName); autoDetected = true; }
   S.cases = []; S.dateCols = []; S.hasCases = false; S.colReport = []; S.missingReport = []; S.caseStats = null;
+  S.partsAdvisedReport = null; S.partsReturnReport = null;
   if (casesName) {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[casesName], { raw: true, defval: null });
     if (rows.length) {
@@ -309,6 +327,7 @@ function parseCases(rows, msgs) {
     partsOrdered: resolveCol(H, CANON_HEADERS.partsOrdered),
     partsConsumed: resolveCol(H, CANON_HEADERS.partsConsumed),
     partsReturned: resolveCol(H, CANON_HEADERS.partsReturned),
+    partsReturnedList: resolveCol(H, CANON_HEADERS.partsReturnedList),
     spa: resolveCol(H, CANON_HEADERS.spa),
     rdf: H.find(h => norm(h) === 'rdf') || null,
     frusAdvised: resolveCol(H, CANON_HEADERS.frusAdvised),
@@ -335,7 +354,7 @@ function parseCases(rows, msgs) {
   const useAdvisedTextLists = !(C.advListed && C.advMatched) && !!(C.advisedList && C.consumedList);
   S.kpiAvailable = {
     partsAdvised: !!(C.advListed && C.advMatched) || useAdvisedTextLists,
-    partsReturn: !!C.partsReturned
+    partsReturn: !!(C.partsReturnedList || C.partsReturned) && !!C.partsOrdered && !!C.partsConsumed
   };
   S.missingReport = [];
   if (!C.advListed || !C.advMatched) {
@@ -346,13 +365,10 @@ function parseCases(rows, msgs) {
       });
     }
   }
-  if (!C.partsReturned) {
+  if (!S.kpiAvailable.partsReturn) {
     S.missingReport.push({
       kpi: 'Parts return rate',
-      reason: 'Column "Returned Parts Qty (parsed)" (BO) is not present.' +
-        (resolveCol(H, 'Parts Returned List')
-          ? ' The sheet has a "Parts Returned List" text column instead, but per-line return quantity is not reliably parseable from free text, so this KPI is left unavailable rather than approximated.'
-          : ' No usable returned-parts column was found either.')
+      reason: 'Column "Parts Returned List" (AP) (or the legacy "Returned Parts Qty (parsed)") together with "# Parts Ordered" (AF) and "# Parts Consumed" (AH) are required, and are not all present.'
     });
   }
 
@@ -390,7 +406,7 @@ function parseCases(rows, msgs) {
       advListed: advListedVal, advMatched: advMatchedVal,
       visits: n0(r[C.visits]), onsite: n0(r[C.onsite]),
       partsOrdered: n0(r[C.partsOrdered]), partsConsumed: n0(r[C.partsConsumed]),
-      partsReturned: n0(r[C.partsReturned]),
+      partsReturned: C.partsReturnedList ? parseReturnedQtyList(r[C.partsReturnedList]) : n0(r[C.partsReturned]),
       spa: n0(r[C.spa]), rdf: n0(r[C.rdf]),
       frusAdvised: n0(r[C.frusAdvised]), orderedBefore: n0(r[C.orderedBefore]),
       d: {}
@@ -422,6 +438,37 @@ function parseCases(rows, msgs) {
   S.hasCases = S.cases.length > 0 && dateCols.length > 0;
   if (S.cases.length && !dateCols.length)
     msgs.push('<span class="err">Cases sheet has no usable date column — trends disabled.</span>');
+
+  if (S.kpiAvailable.partsReturn) buildPartsReturnReport(msgs);
+}
+
+/* Parts Return Rate computed from scratch, NAM-only, aggregated (never averaged) per IB Region
+   plus an overall NAM total. Region with Unused Parts Quantity <= 0 is "Not comparable". */
+function buildPartsReturnReport(msgs) {
+  const namCases = S.cases.filter(r => norm(r.market) === 'nam');
+  const byRegion = new Map();
+  namCases.forEach(r => { if (!byRegion.has(r.region)) byRegion.set(r.region, []); byRegion.get(r.region).push(r); });
+
+  const rowFor = rs => {
+    const ordered = rs.reduce((s, r) => s + r.partsOrdered, 0);
+    const consumed = rs.reduce((s, r) => s + r.partsConsumed, 0);
+    const returned = rs.reduce((s, r) => s + r.partsReturned, 0);
+    const unused = ordered - consumed;
+    const rate = unused > EPS ? returned / unused : null;
+    return { cases: rs.length, ordered, consumed, unused, returned, rate, flagged: rate != null && rate > 1 };
+  };
+
+  const regions = [...byRegion.entries()]
+    .map(([region, rs]) => ({ region, ...rowFor(rs) }))
+    .sort((a, b) => a.region.localeCompare(b.region));
+  const overall = rowFor(namCases);
+
+  S.partsReturnReport = { casesReviewed: namCases.length, regions, overall };
+  const flaggedRegions = regions.filter(r => r.flagged).map(r => r.region);
+  msgs.push('Parts return rate (NAM) computed from scratch using Parts Returned List (AP), ' +
+    `# Parts Ordered (AF), # Parts Consumed (AH): ${namCases.length} NAM cases reviewed across ${regions.length} regions, ` +
+    `overall rate ${overall.rate == null ? 'Not comparable' : (overall.rate * 100).toFixed(1) + '%'}.` +
+    (flaggedRegions.length ? ` <span class="err">Data-quality flag (&gt;100%): ${flaggedRegions.map(esc).join(', ')}.</span>` : ''));
 }
 
 /* --------------------------------------------------------- KPI aggregation */
@@ -493,6 +540,7 @@ function initDashboard() {
   });
   $('btnExportPeriods').addEventListener('click', exportPeriods);
   $('btnExportRegions').addEventListener('click', exportRegions);
+  if ($('btnExportPartsReturn')) $('btnExportPartsReturn').addEventListener('click', exportPartsReturn);
 
   /* default date window = full range */
   if (S.hasCases) {
@@ -588,6 +636,7 @@ function render() {
   renderPeriodTable();
   renderRegionChart();
   renderRegionTable();
+  renderPartsReturnTable();
 }
 
 function renderScope() {
@@ -872,6 +921,29 @@ function renderRegionTable() {
   $('regionTable').innerHTML = h;
 }
 
+function renderPartsReturnTable() {
+  const panel = $('partsReturnPanel');
+  const rep = S.partsReturnReport;
+  if (!panel) return;
+  if (!rep || !rep.regions.length) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  const rateTxt = r => r.rate == null ? 'Not comparable' : (r.rate * 100).toFixed(1) + '%';
+  let h = '<thead><tr><th>IB Region</th><th>Cases</th><th>Total Parts Ordered</th>' +
+    '<th>Total Parts Consumed</th><th>Unused Parts Quantity</th><th>Total Returned Quantity</th><th>Parts Return Rate</th></tr></thead><tbody>';
+  rep.regions.forEach(r => {
+    h += `<tr><td><b>${esc(r.region)}</b></td><td class="num">${r.cases}</td>` +
+      `<td class="num">${r.ordered.toLocaleString()}</td><td class="num">${r.consumed.toLocaleString()}</td>` +
+      `<td class="num">${r.unused.toLocaleString()}</td><td class="num">${r.returned.toLocaleString()}</td>` +
+      `<td class="num ${r.flagged ? 'r' : ''}" ${r.flagged ? 'title="Data-quality flag: rate exceeds 100%"' : ''}>${rateTxt(r)}</td></tr>`;
+  });
+  const o = rep.overall;
+  h += `<tr class="bench"><td>Overall NAM</td><td class="num">${o.cases}</td>` +
+    `<td class="num">${o.ordered.toLocaleString()}</td><td class="num">${o.consumed.toLocaleString()}</td>` +
+    `<td class="num">${o.unused.toLocaleString()}</td><td class="num">${o.returned.toLocaleString()}</td>` +
+    `<td class="num ${o.flagged ? 'r' : ''}">${rateTxt(o)}</td></tr></tbody>`;
+  $('partsReturnTable').innerHTML = h;
+}
+
 function renderPlanTable() {
   const t = $('planTable');
   if (!S.plan.length) { $('planPanel').classList.add('hidden'); return; }
@@ -917,4 +989,15 @@ function exportRegions() {
   regionStats().forEach(r => rows.push([r.name, r.n, ...KPIS.map(k => r[k.key] == null ? '' : r[k.key])]));
   rows.push(['Top-3 benchmark', '', ...KPIS.map(k => k.bench)]);
   download('rdf_kpi_regions.csv', rows.map(r => r.map(csvCell).join(',')).join('\n'));
+}
+function exportPartsReturn() {
+  const rep = S.partsReturnReport;
+  if (!rep) return;
+  const rows = [['IB Region', 'Cases', 'Total Parts Ordered', 'Total Parts Consumed', 'Unused Parts Quantity',
+    'Total Returned Quantity', 'Parts Return Rate']];
+  const rateCell = r => r.rate == null ? 'Not comparable' : (r.rate * 100).toFixed(1) + '%';
+  rep.regions.forEach(r => rows.push([r.region, r.cases, r.ordered, r.consumed, r.unused, r.returned, rateCell(r)]));
+  rows.push(['Overall NAM', rep.overall.cases, rep.overall.ordered, rep.overall.consumed, rep.overall.unused,
+    rep.overall.returned, rateCell(rep.overall)]);
+  download('rdf_parts_return_nam.csv', rows.map(r => r.map(csvCell).join(',')).join('\n'));
 }

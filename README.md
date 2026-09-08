@@ -78,7 +78,8 @@ benchmark for that KPI still displays, for reference, even while the current val
 - **Import panel** — drag & drop `.xlsx`, with a parse report (sheet detected, cases parsed, any
   columns that couldn't be resolved).
 - **Filters** — granularity (weekly / monthly / quarterly), date basis (Creation / Disposition /
-  TECO / System Up date), IB Region, IB Zone, Modality, date range, and minimum cases per period.
+  TECO / System Up date), IB Region, IB Zone, Modality, date range, and **minimum cases per
+  period** (see below).
 - **Latest update** — current value, delta vs previous period, improving / flat / declining, gap
   to the fixed NAM benchmark, and scope average.
 - **Key Insights — auto summary** — plain-English sentence per KPI, sorted worst-first, combining
@@ -93,6 +94,21 @@ benchmark for that KPI still displays, for reference, even while the current val
 - **30-60-90 action plan** table straight from the `RDF Action Plan` sheet, when present.
 - **KPI definitions & how they are calculated** — always the last section, one row per KPI with
   its formula, direction, and fixed benchmark.
+
+## What "Min cases / period" does
+
+Each week/month/quarter is only shown on the trend charts and tables if it has **at least this
+many cases**. Periods with fewer cases than this threshold are dropped from the view.
+
+This exists because a KPI computed from a tiny sample is noisy and can be misleading — e.g. a
+week with only 2 cases could show "RDF Success = 0%" or "100%" purely by chance, creating a
+misleading spike on the trend chart that isn't a real pattern. Raising the threshold filters those
+low-volume, unreliable periods out so the trend reflects genuine movement, not sampling noise.
+
+- **Default: 5.** Lower it (e.g. to 1) to see every period, including low-volume/very recent ones.
+  Raise it (e.g. to 20) for a stricter view when only high-confidence periods matter.
+- This is a **display filter only** — it never changes how a KPI is calculated, only which
+  periods qualify to appear in the trend charts, sparklines, and period-over-period table.
 
 ## Improving vs not improving
 

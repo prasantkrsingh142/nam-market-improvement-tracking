@@ -83,6 +83,7 @@
   </section>
 
   <section id="scopeBar" class="scopebar"></section>
+  
 
   <!-- Latest updates -->
   <section class="panel">
@@ -154,6 +155,16 @@
       <button id="btnExportRegions" class="btn ghost sm">Export CSV</button>
     </div>
     <div class="table-wrap"><table id="regionTable" class="tbl"></table></div>
+  </section>
+
+  <!-- Parts Return Rate — NAM detail -->
+  <section class="panel" id="partsReturnPanel">
+    <div class="panel-head">
+      <h2>Parts Return Rate — NAM detail <span class="hint">(computed from scratch, Market = NAM only)</span></h2>
+      <div class="hint">Rate = Total Returned Quantity &divide; Unused Parts Quantity (Ordered &minus; Consumed); rows &gt;100% are flagged for data-quality review</div>
+      <button id="btnExportPartsReturn" class="btn ghost sm">Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="partsReturnTable" class="tbl"></table></div>
   </section>
 
   <!-- Action plan -->
