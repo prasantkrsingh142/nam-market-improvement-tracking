@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>NAM Market Improvement Tracking — RDF KPI Dashboard</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img src="assets/philips-logo.png" alt="Philips" class="logo-img" />
+    <div>
+      <h1>NAM Market Improvement Tracking</h1>
+      <div class="sub">RDF KPI dashboard &middot; benchmarked against fixed NAM Top-3 region targets</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div id="fileInfo" class="file-info">No file loaded</div>
+    <button id="btnChange" class="btn ghost hidden">Change file</button>
+  </div>
+</header>
+
+<!-- ============ 1. IMPORT ============ -->
+<section id="importView" class="import-view">
+  <div id="dropzone" class="dropzone">
+    <div class="dz-icon">&#8681;</div>
+    <h2>Import your Excel workbook</h2>
+    <p>Drag &amp; drop the <code>.xlsx</code> file here, or click to browse.</p>
+    <p class="dz-hint">
+      Reads the case-level sheet (named <b>Cases</b> or auto-detected) to recompute every KPI
+      from the latest data and build weekly / monthly / quarterly trends. Every KPI is compared
+      against the fixed NAM Top-3 region benchmark.
+    </p>
+    <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden />
+  </div>
+  <div id="importStatus" class="import-status"></div>
+</section>
+
+<!-- ============ 2. DASHBOARD ============ -->
+<main id="dashView" class="hidden">
+
+  <section class="filters">
+    <div class="f">
+      <label>Granularity</label>
+      <select id="fGran">
+        <option value="month" selected>Monthly</option>
+        <option value="week">Weekly</option>
+        <option value="quarter">Quarterly</option>
+      </select>
+    </div>
+    <div class="f">
+      <label>Date basis</label>
+      <select id="fDateCol"></select>
+    </div>
+    <div class="f">
+      <label>IB Region</label>
+      <select id="fRegion"><option value="">All regions</option></select>
+    </div>
+    <div class="f">
+      <label>IB Zone</label>
+      <select id="fZone"><option value="">All zones</option></select>
+    </div>
+    <div class="f">
+      <label>Modality</label>
+      <select id="fModality"><option value="">All modalities</option></select>
+    </div>
+    <div class="f">
+      <label>From</label>
+      <input type="date" id="fFrom" />
+    </div>
+    <div class="f">
+      <label>To</label>
+      <input type="date" id="fTo" />
+    </div>
+    <div class="f">
+      <label>Min cases / period</label>
+      <input type="number" id="fMinCases" value="5" min="1" style="width:90px" />
+    </div>
+    <div class="f end">
+      <button id="btnReset" class="btn ghost">Reset filters</button>
+    </div>
+  </section>
+
+  <section id="scopeBar" class="scopebar"></section>
+
+  <!-- Latest updates -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Latest update <span id="latestPeriodLbl" class="pill"></span></h2>
+      <div class="legend">
+        <span class="lg lg-imp">Improving</span>
+        <span class="lg lg-flat">Flat</span>
+        <span class="lg lg-dec">Declining</span>
+      </div>
+    </div>
+    <div id="kpiCards" class="kpi-grid"></div>
+  </section>
+
+  <!-- Narrative -->
+  <section class="panel">
+    <div class="panel-head"><h2>Key Insights &mdash; auto summary</h2></div>
+    <div id="narrative" class="narrative"></div>
+  </section>
+
+  <!-- Trend small multiples -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>KPI trends</h2>
+      <div class="hint">Solid line = actual &middot; dashed line = NAM Top-3 benchmark &middot; shaded band = below benchmark</div>
+    </div>
+    <div id="sparkGrid" class="spark-grid"></div>
+  </section>
+
+  <!-- Detail chart -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>KPI detail</h2>
+      <select id="detailKpi" class="inline-select"></select>
+    </div>
+    <div class="chart-lg"><canvas id="detailChart"></canvas></div>
+    <div class="chart-lg small"><canvas id="volumeChart"></canvas></div>
+  </section>
+
+  <!-- Period table -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Period-over-period table</h2>
+      <button id="btnExportPeriods" class="btn ghost sm">Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="periodTable" class="tbl"></table></div>
+  </section>
+
+  <!-- Region comparison -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Region comparison</h2>
+      <select id="regionKpi" class="inline-select"></select>
+      <select id="regionSort" class="inline-select">
+        <option value="gap">Sort: worst gap first</option>
+        <option value="value">Sort: KPI value</option>
+        <option value="cases">Sort: case volume</option>
+        <option value="name">Sort: name</option>
+      </select>
+    </div>
+    <div class="chart-xl"><canvas id="regionChart"></canvas></div>
+  </section>
+
+  <!-- Region scorecard -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Region scorecard</h2>
+      <div class="hint">Green = at/above benchmark &middot; Amber = within 20% of benchmark &middot; Red = material gap</div>
+      <button id="btnExportRegions" class="btn ghost sm">Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="regionTable" class="tbl"></table></div>
+  </section>
+
+  <!-- Action plan -->
+  <section class="panel" id="planPanel">
+    <div class="panel-head"><h2>30-60-90 action plan <span class="hint">(from RDF Action Plan sheet)</span></h2></div>
+    <div class="table-wrap"><table id="planTable" class="tbl"></table></div>
+  </section>
+
+  <!-- KPI definitions — always last -->
+  <section class="panel">
+    <div class="panel-head"><h2>KPI definitions &amp; how they are calculated</h2></div>
+    <div class="table-wrap"><table id="defTable" class="tbl"></table></div>
+  </section>
+
+  <footer class="foot">
+    Generated from <span id="footFile"></span> &middot; <span id="footTime"></span>
+  </footer>
+</main>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/chart.umd.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
