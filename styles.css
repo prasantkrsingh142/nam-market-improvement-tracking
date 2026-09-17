@@ -106,3 +106,65 @@ code{background:#222a36;padding:1px 5px;border-radius:4px;font-size:12px}
 .tbl tr.bench td{background:#20283a;font-weight:600}
 
 .foot{color:var(--muted);font-size:12px;padding:0 24px 30px}
+
+/* local data assistant */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.chat-launcher{position:fixed;right:22px;bottom:22px;z-index:80;display:flex;align-items:center;gap:9px;
+  border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:11px 17px;color:#fff;
+  background:linear-gradient(135deg,#1769d2,#0b4da2);box-shadow:0 12px 32px rgba(0,0,0,.4);
+  font:600 13px/1 "Segoe UI",sans-serif;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.chat-launcher:hover{transform:translateY(-1px);box-shadow:0 15px 38px rgba(0,0,0,.48)}
+.chat-launcher:focus-visible,.chat-icon-btn:focus-visible,.chat-starters button:focus-visible,
+.chat-compose textarea:focus-visible,.chat-compose button:focus-visible{outline:2px solid #8fc3ff;outline-offset:2px}
+.chat-launcher-icon{font-size:18px}
+.chat-panel{position:fixed;right:22px;bottom:78px;z-index:90;width:min(420px,calc(100vw - 28px));
+  height:min(610px,calc(100vh - 110px));display:flex;flex-direction:column;overflow:hidden;
+  background:#161b22;border:1px solid #354052;border-radius:16px;
+  box-shadow:0 22px 65px rgba(0,0,0,.55)}
+.chat-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 15px 10px;
+  background:linear-gradient(135deg,#18273c,#162033)}
+.chat-head h2{margin:0;font-size:15px}
+.chat-scope{margin-top:2px;color:#9fb0c5;font-size:11px}
+.chat-head-actions{display:flex;gap:5px}
+.chat-dataset{width:calc(100% - 24px);margin:9px 12px 0;padding:6px 8px;border:1px solid #40506a;
+  border-radius:7px;background:#1c2430;color:var(--txt);font-size:11px}
+.chat-icon-btn{width:31px;height:31px;border:1px solid #40506a;border-radius:7px;background:transparent;
+  color:var(--txt);font-size:17px;cursor:pointer}
+.chat-icon-btn:hover{background:#26344a}
+.chat-privacy{padding:6px 15px;border-top:1px solid #26344a;border-bottom:1px solid var(--line);
+  color:#90b9ec;background:#121a27;font-size:10.5px}
+.chat-messages{flex:1;overflow:auto;padding:14px;scroll-behavior:smooth}
+.chat-msg{display:flex;margin-bottom:11px}
+.chat-msg.user{justify-content:flex-end}
+.chat-bubble{max-width:91%;padding:9px 11px;border-radius:11px;background:#222a36;font-size:12.5px;
+  overflow-wrap:anywhere}
+.chat-msg.user .chat-bubble{background:#1459aa;color:#fff;border-bottom-right-radius:3px}
+.chat-msg.assistant .chat-bubble{border:1px solid #303a49;border-bottom-left-radius:3px}
+.chat-summary{white-space:pre-wrap}
+.chat-export-btn{margin-top:8px;border:1px solid #3e6798;border-radius:6px;padding:4px 8px;
+  background:#172c47;color:#b9d5fa;font-size:10.5px;font-weight:600;cursor:pointer}
+.chat-export-btn:hover{border-color:#7eb8ff;color:#fff}
+.chat-meta{margin-top:7px;color:var(--muted);font-size:10.5px}
+.chat-result-wrap{overflow:auto;max-height:210px;margin-top:8px;border:1px solid var(--line);border-radius:7px}
+.chat-result{width:100%;border-collapse:collapse;font-size:10.5px}
+.chat-result th{position:sticky;top:0;background:#273246;text-align:left;white-space:nowrap;padding:5px 7px}
+.chat-result td{padding:5px 7px;border-top:1px solid #2a3140;white-space:nowrap;max-width:210px;
+  overflow:hidden;text-overflow:ellipsis}
+.chat-starters{display:flex;gap:6px;overflow-x:auto;padding:0 12px 10px}
+.chat-starters button{flex:0 0 auto;max-width:235px;border:1px solid #344258;border-radius:999px;
+  padding:6px 9px;background:#1c2635;color:#b9d5fa;font-size:10.5px;cursor:pointer}
+.chat-starters button:hover{border-color:var(--acc);color:#fff}
+.chat-typing{padding:0 15px 8px;color:#9fb0c5;font-size:11px}
+.chat-compose{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid var(--line);background:#12171f}
+.chat-compose textarea{flex:1;min-height:38px;max-height:92px;resize:none;border:1px solid #39465a;
+  border-radius:9px;background:#1c2430;color:var(--txt);padding:9px 10px;font:12.5px/1.4 "Segoe UI",sans-serif}
+.chat-compose button{align-self:flex-end;height:38px;border:0;border-radius:8px;background:var(--acc);
+  color:#fff;padding:0 14px;font-weight:600;cursor:pointer}
+.chat-compose button:disabled{opacity:.45;cursor:not-allowed}
+
+@media (max-width:600px){
+  .chat-launcher{right:14px;bottom:14px}
+  .chat-launcher span:last-child{display:none}
+  .chat-panel{right:7px;bottom:67px;width:calc(100vw - 14px);height:min(650px,calc(100vh - 80px))}
+}

@@ -19,8 +19,99 @@ and trend charts, benchmarked against the fixed **NAM Top-3 region targets**.
 2. Drag & drop the `.xlsx` workbook onto the import panel (or click to browse).
 3. The dashboard opens automatically, using the **latest uploaded data** for every KPI, trend and
    region view.
+4. Click **Ask NAM Data Assistant** in the bottom-right corner to query the complete uploaded
+   case dataset in natural language.
 
 Nothing is uploaded anywhere — the file is parsed entirely in your browser.
+
+## Local data assistant
+
+The floating assistant answers questions from the **full case-level dataset in the most recently
+uploaded workbook**. It does not inherit the dashboard's visible filters; every response includes
+its own scope, applied filters, calculation, and sample size. Uploading a new workbook replaces
+the assistant's data context and clears the previous conversation.
+
+**Minor typos are tolerated.** Column names and known values like region names (e.g. "Vists" for
+Visits, "Bostn" for Boston) are auto-corrected before the question is parsed, using a conservative
+spell-check that only touches 4+ letter words with a close, unambiguous match — everyday query
+words ("show", "count", "average", "and", ...) are never altered, and any correction made is shown
+in the answer's scope line so results are never silently reinterpreted. 1–3 letter fields (such as
+the "RDF"/"FVF" abbreviations) are matched exactly and are not auto-corrected, to avoid guessing.
+Swapped-adjacent-letter typos (e.g. "scpoe" for "scope", "Onsiet" for "Onsite") are also corrected,
+so a longer/more specific column name (like a distinct "RDF Scope" column) is never confused with
+a shorter one that happens to share a prefix (like "RDF"). Multi-word column names also still
+match when a question has extra or irregular spacing between the words (e.g. "rdf  scope" with a
+stray double space), so a stray extra space can't cause the same kind of accidental fallback to a
+shorter, unrelated column.
+
+**Question history, like a terminal.** Press **↑** in the chat input to recall your previously
+asked questions (most recent first) and **↓** to move back toward your newest question or an
+in-progress draft you hadn't sent yet — the same behavior as command-line shell history. This is
+only active while the input is a single line, so multi-line composition (Shift+Enter) still uses
+normal arrow-key caret movement. History is cleared whenever the chat is cleared or a new workbook
+is uploaded.
+
+Supported question types include:
+
+- available columns and distinct values;
+- case counts and counts grouped by any case column, or up to three columns at once;
+- sum, average, median, minimum, and maximum of numeric columns;
+- filters by region, zone, modality, market, date/month/year, equality, numeric comparisons
+  (`>`, `<`, `>=`, `<=`, `=`), and `between A and B` numeric ranges;
+- multiple numeric conditions on the same or different columns (e.g. `Visits > 1 and Visits < 5`);
+- combined **AND** filters across any loaded case columns, plus counts and numeric calculations
+  grouped by up to three loaded columns;
+- percentage/share questions (e.g. what share of cases meet a condition, optionally within a
+  region/zone/modality/market scope);
+- top/bottom case rankings and capped case listings;
+- single-case lookups — get one field, or the full record, for a specific case number (e.g.
+  `Give field Remarks for case 0124999777`, `Show case 0124999777`). After a case lookup, you can
+  keep asking about **just that case** without repeating the case number — e.g. `field Field
+  Remarks`, `remote remark`, `open field remarks`, or `what is X for this case` all continue on the
+  most recently looked-up case, until you look up a different one or clear the chat;
+- region comparisons and all dashboard KPI calculations, using the exact formulas and fixed
+  benchmarks documented below.
+
+Examples:
+
+```text
+What is RDF success rate for Boston?
+Which region has the highest visits per case?
+Compare Chicago and Tampa for all KPIs
+How many cases were created last month?
+Show cases where Visits > 3
+Show cases where Visits between 2 and 5
+What percentage of cases have RDF 1?
+Median Onsite Hours
+Count cases by Modality
+Count cases by Modality and T2 Engineer
+Average Visits by Region and Modality
+How many cases with RDF 1 and FVF 0?
+List available columns
+Give field Remarks for case 0124999777
+Show case B-1
+```
+
+Every result table includes an **Export Excel** button that downloads exactly the rows and
+columns shown (matching any row cap), never the full underlying dataset.
+
+In the chat, ask **“What can you calculate?”** at any time to see the current workbook columns
+and supported question patterns. The assistant always uses the most recently uploaded source and
+shows its interpreted filters and sample size, so users can verify the result scope before acting
+on it.
+
+The assistant is a deterministic, in-browser query tool rather than a hosted generative AI.
+There are **no API calls, backend services, analytics requests, or embedded API keys**. It never
+sends workbook contents over the network. If a question cannot be mapped safely to a supported
+calculation, it asks for clearer wording instead of inventing a result. Case listings are capped
+at 25 rows in the chat panel; aggregate calculations still use every matching case.
+
+You can also load one or more CSV summary reports. The chat's **Data source** selector lets you
+choose between the loaded case data and each report. For a report it can list columns, find
+distinct values, count populated rows, and calculate or rank numeric report columns (sum,
+average, minimum, maximum, top/bottom). Those results are explicitly labeled as **report-row**
+calculations: a regional or KPI scorecard does not contain the individual cases required for
+case-level filtering or case listings.
 
 ## What it reads
 
@@ -57,16 +148,18 @@ per-region numbers exactly (Chicago, QC, Michigan, Tampa, Boston all match to 1e
 | Pre-first-visit ordering success | higher better | `SUM(Advised Part Ordered Before First Visit) / COUNT(cases with # FRUs Advised > 0)` | 52.3% |
 | Parts consumed per Case | lower better | `SUM(# Parts Consumed) / COUNT(cases)` | 1.37 |
 | Onsite hours per Case *(secondary)* | lower better | `SUM(Onsite Hours) / COUNT(cases)` | 3.18 |
+| Parts return rate *(secondary)* | higher better | `SUM(Returned Parts Qty) / SUM(# Parts Ordered − # Parts Consumed)`, cases where that difference is positive | 73.0% |
 
-These 7 benchmark values are used identically everywhere in the dashboard: the latest-update
+These 8 benchmark values are used identically everywhere in the dashboard: the latest-update
 cards, the KPI trend overlay line, the region comparison chart, and the region scorecard.
 
 **Missing source columns:** if the uploaded workbook doesn't contain `Advised Part Numbers
 Listed/Matched` (needed for Parts Advised Success rate) — e.g. a raw single-sheet export with
-only free-text parts-list columns — the corresponding KPI's *current value* is reported as
-unavailable ("—") rather than approximated from ambiguous free-text list columns. This is noted
-in the import status message. The fixed benchmark for that KPI still displays, for reference, even
-while the current value is unavailable.
+only free-text parts-list columns — the dashboard derives it from valid 12-digit part numbers in
+`Parts Advised List` and `Parts Consumed List` when both columns are available. Otherwise the
+current value is unavailable. Parts return rate similarly requires `Returned Parts Qty (parsed)`,
+`# Parts Ordered`, and `# Parts Consumed`. Missing KPI inputs are reported during import and are
+never silently treated as a valid zero result.
 
 ## Features
 
@@ -89,6 +182,8 @@ while the current value is unavailable.
 - **30-60-90 action plan** table straight from the `RDF Action Plan` sheet, when present.
 - **KPI definitions & how they are calculated** — always the last section, one row per KPI with
   its formula, direction, and fixed benchmark.
+- **NAM Data Assistant** — floating local-only chat overlay for natural-language questions across
+  every source case column; it does not alter report section order.
 
 ## What "Min cases / period" does
 

@@ -26,13 +26,13 @@
   <div id="dropzone" class="dropzone">
     <div class="dz-icon">&#8681;</div>
     <h2>Import your Excel workbook</h2>
-    <p>Drag &amp; drop the <code>.xlsx</code> file here, or click to browse.</p>
+    <p>Drag &amp; drop one or more <code>.xlsx</code> or <code>.csv</code> files here, or click to browse.</p>
     <p class="dz-hint">
       Reads the case-level sheet (named <b>Cases</b> or auto-detected) to recompute every KPI
       from the latest data and build weekly / monthly / quarterly trends. Every KPI is compared
       against the fixed NAM Top-3 region benchmark.
     </p>
-    <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden />
+    <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv" multiple hidden />
   </div>
   <div id="importStatus" class="import-status"></div>
 </section>
@@ -47,7 +47,9 @@
         <option value="month" selected>Monthly</option>
         <option value="week">Weekly</option>
         <option value="quarter">Quarterly</option>
+        <option value="year">Yearly</option>
       </select>
+      <div class="hint" id="granRangeHint"></div>
     </div>
     <div class="f">
       <label>Date basis</label>
@@ -173,6 +175,47 @@
     Generated from <span id="footFile"></span> &middot; <span id="footTime"></span>
   </footer>
 </main>
+
+<!-- Floating local data assistant (kept outside the report section order) -->
+<button id="chatLauncher" class="chat-launcher" type="button"
+  aria-haspopup="dialog" aria-controls="chatPanel" aria-expanded="false">
+  <span class="chat-launcher-icon" aria-hidden="true">&#10022;</span>
+  <span>Ask NAM Data Assistant</span>
+</button>
+
+<aside id="chatPanel" class="chat-panel hidden" role="dialog" aria-modal="false"
+  aria-labelledby="chatTitle" aria-describedby="chatPrivacy">
+  <div class="chat-head">
+    <div>
+      <h2 id="chatTitle">NAM Data Assistant</h2>
+      <div id="chatScope" class="chat-scope">No workbook loaded</div>
+    </div>
+    <div class="chat-head-actions">
+      <button id="chatClear" class="chat-icon-btn" type="button" aria-label="Clear chat" title="Clear chat">&#8635;</button>
+      <button id="chatClose" class="chat-icon-btn" type="button" aria-label="Minimize data assistant" title="Minimize">&minus;</button>
+    </div>
+  </div>
+  <label for="chatDataset" class="sr-only">Data source for questions</label>
+  <select id="chatDataset" class="chat-dataset" aria-label="Data source for questions"></select>
+  <div id="chatPrivacy" class="chat-privacy">Local only &middot; your workbook never leaves this browser</div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+  <div id="chatStarters" class="chat-starters" aria-label="Suggested questions">
+    <button type="button">What can you calculate?</button>
+    <button type="button">List available columns</button>
+    <button type="button">Count cases by Modality</button>
+    <button type="button">Which region has the highest visits per case?</button>
+    <button type="button">Compare Chicago and Tampa for all KPIs</button>
+  </div>
+  <div id="chatTyping" class="chat-typing hidden" role="status">Analyzing workbook data&hellip;</div>
+  <form id="chatForm" class="chat-compose">
+    <label for="chatInput" class="sr-only">Ask a question about the uploaded workbook</label>
+    <textarea id="chatInput" rows="1" maxlength="500"
+      placeholder="Ask about cases, columns, or KPIs... (↑/↓ for history)"
+      aria-label="Question about workbook data. Use the up and down arrow keys to recall previous questions."
+      title="Up/Down arrow: recall previous questions"></textarea>
+    <button id="chatSend" type="submit" aria-label="Send question">Send</button>
+  </form>
+</aside>
 
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/chart.umd.js"></script>
